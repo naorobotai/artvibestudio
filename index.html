@@ -45,167 +45,278 @@
   <meta name="description" content="Discover vibrant digital art by Yujin Ahn at ArtVibeStudio. Shop custom wallpapers, stickers, and more.">
   <meta name="keywords" content="digital art, custom wallpapers, stickers, Yujin Ahn, ArtVibeStudio">
   <meta name="author" content="Yujin Ahn">
+  <!-- DNS Prefetch for faster resource loading -->
   <meta name="dns-prefetch" href="//cdn.jsdelivr.net">
   <meta name="dns-prefetch" href="//www.google.com">
+  <meta name="dns-prefetch" href="//api.gumroad.com">
+  <!-- Content Security Policy for security -->
+  <meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' https://www.google.com https://www.gstatic.com https://cdn.jsdelivr.net https://unpkg.com https://gumroad.com https://www.googletagmanager.com 'unsafe-inline';
+  style-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com 'unsafe-inline';
+  font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com data:;
+  img-src 'self' https://images.unsplash.com data:;
+  connect-src 'self' https://artvibestudio.store https://firestore.googleapis.com https://storage.googleapis.com https://api.gumroad.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com;
+  frame-src 'self' https://www.google.com https://gumroad.com;
+  ">
+  <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains">
   <title>ArtVibeStudio - Vibrant Digital Art</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" onerror="this.href='https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css'">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/ScrollTrigger.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+  <!-- Critical Scripts (Deferred for Performance) -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.8.0/dist/vanilla-tilt.min.js" defer></script>
-  <script src="https://unpkg.com/swiper/swiper-bundle.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js" defer></script>
   <script src="https://www.google.com/recaptcha/api.js?render=your-recaptcha-site-key" defer></script>
+  <!-- Chatbase Script (Commented for Local Testing) -->
+  <!--
+    <script src="https://www.chatbase.co/embed.min.js" id="chatbase-script" defer></script>
+    <script>
+      window.chatbaseConfig = {
+        chatbotId: "your-chatbase-id",
+        domain: "https://www.chatbase.co",
+        theme: {
+          primaryColor: "#3B82F6",
+          secondaryColor: "#10B981",
+          textColor: "#ffffff",
+          backgroundColor: "#1F2937"
+        },
+        position: "bottom-right",
+        greeting: "Welcome to ArtVibeStudio! Need help with custom art?"
+      };
+    </script>
+  -->
+  <!-- Local Testing Instructions -->
+  <!--
+    To test locally, run a local server to avoid CORS issues:
+    1. Use VS Code with Live Server extension.
+    2. Or run `python -m http.server 8000` in the project directory and visit `http://localhost:8000`.
+    3. Ensure all files (script.js, style.css, images) are in the correct directory.
+  -->
+  <script>
+    // XLSX File Handling
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          const workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          const filteredData = jsonData.filter(row => row.some(filledCell));
+          const headerRowIndex = filteredData.findIndex((row, index) =>
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          return XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex || 0)), { header: 1 });
+        } catch (e) {
+          console.error('XLSX Parsing Error:', e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+  </script>
   <script type="module">
+    // Firebase Initialization
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
     import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js';
-    import { getMessaging, getToken } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js';
     import { getStorage } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
     const firebaseConfig = {
-      apiKey: "your-firebase-api-key",
-      authDomain: "your-auth-domain",
-      projectId: "your-project-id",
-      storageBucket: "your-storage-bucket",
-      messagingSenderId: "your-messaging-sender-id",
-      appId: "your-app-id",
-      measurementId: "your-measurement-id"
+      apiKey: "AIzaSyBjMDbPZqvmaNjA-Rp903ygD3vMuZLS0xg",
+      authDomain: "artvibestudio.store",
+      projectId: "artvibestudio-72879277",
+      storageBucket: "artvibestudio-72879277.firebasestorage.app",
+      messagingSenderId: "248596583705",
+      appId: "1:248596583705:web:1348b52c0fdfbce8ef2188",
+      measurementId: "G-JMW188G5LE"
     };
+
+    const preloader = document.getElementById('preloader');
+    const fallback = document.getElementById('fallback-ui');
+
+    function showFallback(message) {
+      console.error(message);
+      preloader.style.transition = 'opacity 0.5s';
+      preloader.style.opacity = '0';
+      setTimeout(() => {
+        preloader.style.display = 'none';
+        fallback.querySelector('p').textContent = message;
+        fallback.style.display = 'block';
+      }, 500);
+    }
+
+    function hidePreloader() {
+      preloader.style.transition = 'opacity 0.5s';
+      preloader.style.opacity = '0';
+      setTimeout(() => preloader.style.display = 'none', 500);
+    }
+
     try {
       const app = initializeApp(firebaseConfig);
       window.firebaseAuth = getAuth(app);
       window.firebaseDb = getFirestore(app);
       window.firebaseAnalytics = getAnalytics(app);
-      window.firebaseMessaging = getMessaging(app);
       window.firebaseStorage = getStorage(app);
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-          .then(reg => {
-            getToken(window.firebaseMessaging, { vapidKey: 'your-vapid-key', serviceWorkerRegistration: reg })
-              .then(token => console.log('FCM Token:', token))
-              .catch(err => console.error('FCM Token Error:', err));
-          })
-          .catch(err => {
-            console.error('Service Worker registration failed:', err);
-            document.getElementById('fallback-ui').style.display = 'block';
-          });
-      }
+      hidePreloader();
     } catch (error) {
-      console.error('Firebase initialization failed:', error);
-      setTimeout(() => {
-        document.getElementById('preloader').style.display = 'none';
-        document.getElementById('fallback-ui').style.display = 'block';
-      }, 5000);
+      showFallback(`Firebase initialization failed: ${error.message}. Please check your Firebase configuration or test with a local server.`);
     }
+
+    // Fallback for local testing
+    setTimeout(() => {
+      if (preloader.style.display !== 'none') {
+        showFallback('Loading timeout. Please run a local server (e.g., `python -m http.server`) and visit http://localhost:8000.');
+      }
+    }, 8000);
   </script>
+  <script type="module" src="script.js" defer></script>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900">
-  <a href="#main-content" class="skip-link">Skip to main content</a>
+<body class="bg-gray-100 dark:bg-gray-900 font-poppins transition-colors duration-300">
+  <!-- Skip Link for Accessibility -->
+  <a href="#main-content" class="skip-link sr-only focus:not-sr-only bg-blue-600 text-white px-4 py-2 rounded fixed top-4 left-4 z-50">Skip to main content</a>
 
   <!-- Preloader -->
-  <div id="preloader" class="fixed inset-0 bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
-    <div class="spinner w-12 h-12 border-4 border-t-blue-500 border-green-400 rounded-full animate-spin"></div>
-    <div class="w-64 h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-4 overflow-hidden">
-      <div id="progress" class="h-full bg-blue-500 transition-all duration-200"></div>
-    </div>
-    <p class="mt-4 text-lg text-blue-500 dark:text-green-400">Loading ArtVibeStudio...</p>
+  <div id="preloader" class="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center z-50 transition-opacity duration-500" role="status" aria-live="polite">
+    <div class="spinner w-16 h-16 border-4 border-t-blue-600 border-green-500 rounded-full animate-spin"></div>
+    <p class="mt-4 text-xl font-medium text-blue-600 dark:text-blue-500 animate-pulse">Loading ArtVibeStudio...</p>
   </div>
 
   <!-- Fallback UI -->
-  <div id="fallback-ui" class="hidden container mx-auto p-4 text-center">
-    <h1 class="text-3xl font-bold text-red-500">Error Loading ArtVibeStudio</h1>
-    <p class="mt-2 text-gray-600 dark:text-gray-300">Please check your Firebase configuration in config.json and ensure service-worker.js is accessible.</p>
-    <a href="#home" class="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded-full">Retry</a>
+  <div id="fallback-ui" class="hidden container mx-auto p-6 text-center">
+    <h1 class="text-4xl font-bold text-red-600 font-montserrat">Error Loading ArtVibeStudio</h1>
+    <p class="mt-3 text-lg text-gray-600 dark:text-gray-400">Please run a local server (e.g., `python -m http.server`) or check your network connection.</p>
+    <a href="#" class="mt-6 inline-block bg-blue-600 text-white px-8 py-3 rounded-full font-medium hover:bg-green-500 transition">Retry</a>
   </div>
 
   <!-- Header -->
-  <header id="header" class="sticky top-0 bg-white dark:bg-gray-800 shadow-lg z-40 transition-all duration-300" role="banner">
-    <div class="container mx-auto flex items-center justify-between p-4">
-      <a href="#home" class="logo text-3xl font-bold text-blue-500 dark:text-green-400" aria-label="ArtVibeStudio Home">ArtVibeStudio</a>
-      <div class="flex items-center gap-4">
-        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
-          <span class="text-2xl">🌙</span>
-        </button>
-        <button class="menu-toggle md:hidden" onclick="toggleMenu()" aria-label="Toggle menu" aria-expanded="false">
-          <span class="block w-6 h-0.5 bg-gray-800 dark:bg-gray-200 mb-1"></span>
-          <span class="block w-6 h-0.5 bg-gray-800 dark:bg-gray-200 mb-1"></span>
-          <span class="block w-6 h-0.5 bg-gray-800 dark:bg-gray-200"></span>
-        </button>
+  <header id="header" class="fixed top-0 w-full bg-white dark:bg-gray-800 shadow-md z-40 transition-all duration-300" role="banner">
+    <div class="container mx-auto flex flex-col sm:flex-row items-center justify-between p-4">
+      <div class="flex items-center justify-between w-full sm:w-auto">
+        <a href="#home" class="logo text-3xl font-bold text-blue-600 dark:text-blue-500 font-montserrat" aria-label="ArtVibeStudio Home">ArtVibeStudio</a>
+        <div class="flex items-center gap-4">
+          <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Toggle dark mode">
+            <svg class="w-6 h-6 text-gray-800 dark:text-gray-200" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+          </button>
+          <button class="menu-toggle sm:hidden p-2" aria-label="Toggle menu" aria-expanded="false">
+            <span class="block w-8 h-1 bg-gray-800 dark:bg-white mb-1.5 rounded"></span>
+            <span class="block w-8 h-1 bg-gray-800 dark:bg-white mb-1.5 rounded"></span>
+            <span class="block w-8 h-1 bg-gray-800 dark:bg-white rounded"></span>
+          </button>
+        </div>
       </div>
-      <nav class="tab-nav hidden md:flex" role="navigation" aria-label="Main navigation">
-        <ul class="nav-tabs flex gap-4" role="tablist">
-          <li role="presentation"><a href="#home" role="tab" aria-selected="true" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">Home</a></li>
-          <li role="presentation"><a href="#shop" role="tab" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">Shop</a></li>
-          <li role="presentation"><a href="#request" role="tab" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">Custom Art</a></li>
-          <li role="presentation"><a href="#contact" role="tab" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">Contact</a></li>
-          <li role="presentation" id="my-page-tab" class="hidden"><a href="#my-page" role="tab" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">My Page</a></li>
-          <li role="presentation"><a href="#about" role="tab" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">About</a></li>
-          <li class="cart-link relative" role="presentation">
-            <a href="javascript:void(0)" onclick="showCart()" aria-label="View cart" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">
-              Cart (<span id="cart-count">0</span>)
+      <nav class="nav-links hidden sm:flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mt-4 sm:mt-0" role="navigation" aria-label="Main navigation">
+        <ul class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
+          <li><a href="#home" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Home</a></li>
+          <li><a href="#shop" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Shop</a></li>
+          <li><a href="#custom-wallpapers" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Custom Wallpapers</a></li>
+          <li><a href="#request" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Custom Art</a></li>
+          <li><a href="#contact" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Contact</a></li>
+          <li id="my-page-tab" class="hidden"><a href="#my-page" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">My Page</a></li>
+          <li id="admin-tab" class="hidden"><a href="#admin" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Admin</a></li>
+          <li><a href="#about" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">About</a></li>
+          <li class="cart-link relative">
+            <a href="javascript:void(0)" id="cart-link" aria-label="View cart" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">
+                Cart (<span id="cart-count">0</span>)
             </a>
             <div class="mini-cart hidden absolute top-full right-0 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg min-w-[200px] z-10" id="mini-cart"></div>
+        </li>
+          <li id="auth-link">
+            <a href="javascript:void(0)" id="auth-button" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition font-medium">Login/Sign Up</a>
           </li>
-          <li id="auth-link" role="presentation"><a href="javascript:void(0)" onclick="showLogin()" class="px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-blue-500 hover:text-white rounded-lg transition">Login/Sign Up</a></li>
         </ul>
+        <div class="search-bar flex items-center gap-2 w-full sm:max-w-md mt-4 sm:mt-0 relative">
+          <input type="text" id="search" placeholder="Search art..." aria-label="Search shop items" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition">
+          <div id="search-suggestions" class="hidden absolute top-full left-0 bg-white dark:bg-gray-800 border border-blue-600 dark:border-blue-500 rounded-lg w-full max-h-48 overflow-y-auto z-10 shadow-lg"></div>
+          <button aria-label="Search" class="p-3 bg-green-500 dark:bg-green-400 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>
+        </div>
       </nav>
-      <div class="search-bar flex items-center gap-2 max-w-md w-full relative">
-        <input type="text" id="search" placeholder="Search art..." aria-label="Search shop items" class="w-full p-2 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200" autocomplete="off">
-        <div id="search-suggestions" class="hidden absolute top-full left-0 bg-white dark:bg-gray-800 border border-blue-500 rounded-lg w-full max-h-40 overflow-y-auto z-10"></div>
-        <button onclick="searchShop()" aria-label="Search" class="p-2 bg-green-400 text-white rounded-lg hover:bg-blue-500"><span class="text-xl">🔍</span></button>
-      </div>
     </div>
   </header>
 
   <!-- Main Content -->
   <main id="main-content">
-    <!-- Home Section -->
-    <section id="home" class="section hero relative min-h-screen flex items-center justify-center text-center bg-gradient-to-br from-blue-100 to-green-100 dark:from-blue-900 dark:to-green-900" aria-labelledby="home-title" role="tabpanel">
-      <div class="parallax-bg absolute inset-0 bg-cover bg-center bg-fixed z-0" style="background-image: url('images/hero-bg.webp');" aria-hidden="true"></div>
-      <div class="container mx-auto relative z-10">
-        <h1 id="home-title" class="text-6xl md:text-8xl font-bold text-blue-500 dark:text-green-400 animate-text">Vibrant Art by Yujin Ahn</h1>
-        <p class="tagline text-2xl md:text-3xl text-gray-800 dark:text-gray-200 mt-4 animate-text delay-1">Custom wallpapers, stickers, and more to inspire your style.</p>
-        <div class="cta-group flex flex-col md:flex-row gap-4 justify-center mt-6">
-          <a href="#request" class="cta-button bg-blue-500 text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-green-400 transition transform hover:scale-105 pulse" aria-label="Create your custom art">Create Your Art</a>
-          <a href="#shop" class="cta-button bg-transparent border-2 border-green-400 text-green-400 px-8 py-3 rounded-full text-lg font-semibold hover:bg-green-400 hover:text-white transition transform hover:scale-105" aria-label="Browse shop">Browse Shop</a>
+    <!-- Hero Section -->
+    <section id="home" class="section hero relative min-h-screen flex items-center justify-center text-center bg-gray-100 dark:bg-gray-900" aria-labelledby="home-title">
+      <div class="parallax-bg absolute inset-0 bg-cover bg-center bg-fixed z-0" style="background-image: url('https://images.unsplash.com/photo-1618949474978-87ae91db7c5b?auto=format&fit=crop&w=1920&q=80');" aria-hidden="true"></div>
+      <div class="container mx-auto relative z-10 bg-black bg-opacity-60 p-6 sm:p-8 rounded-2xl">
+        <h1 id="home-title" class="text-4xl sm:text-5xl md:text-6xl font-bold text-green-500 dark:text-green-400 font-montserrat">Vibrant Art by Yujin Ahn</h1>
+        <p class="text-lg sm:text-xl text-white dark:text-gray-200 mt-4">Custom wallpapers, stickers, and more to inspire your style.</p>
+        <div class="cta-group flex flex-col sm:flex-row gap-4 justify-center mt-6">
+          <a href="#request" class="cta-button bg-blue-600 dark:bg-blue-500 text-white px-6 sm:px-8 py-3 rounded-full text-base sm:text-lg font-semibold hover:bg-green-500 dark:hover:bg-green-400 transition">Create Your Art</a>
+          <a href="#shop" class="cta-button bg-transparent border-2 border-green-500 dark:border-green-400 text-green-500 dark:text-green-400 px-6 sm:px-8 py-3 rounded-full text-base sm:text-lg font-semibold hover:bg-green-500 dark:hover:bg-green-400 hover:text-white transition">Browse Shop</a>
         </div>
-        <img src="images/phone-mockup.webp" alt="Phone displaying a custom wallpaper" class="phone-mockup mx-auto mt-8 max-w-xs md:max-w-sm rounded-2xl shadow-2xl animate-pop" loading="lazy">
+        <picture>
+          <source srcset="images/phone-mockup.webp" type="image/webp">
+          <img src="images/phone-mockup.jpg" alt="Phone displaying a custom wallpaper" class="mx-auto mt-8 max-w-xs sm:max-w-sm rounded-2xl shadow-2xl" loading="lazy">
+        </picture>
       </div>
+      <a href="#carousel" class="absolute bottom-8 animate-bounce text-white" aria-label="Scroll to featured art">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+      </a>
     </section>
 
-    <!-- Product Carousel -->
-    <section id="carousel" class="section py-24" aria-labelledby="carousel-title">
+    <!-- Carousel Section -->
+    <section id="carousel" class="section py-16 bg-gray-100 dark:bg-gray-900" aria-labelledby="carousel-title">
       <div class="container mx-auto">
-        <h2 id="carousel-title" class="section-title text-4xl md:text-5xl font-bold text-blue-500 dark:text-green-400 text-center mb-12">Featured Art</h2>
+        <h2 id="carousel-title" class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-500 font-montserrat text-center mb-8">Featured Art</h2>
         <div class="swiper-container">
           <div class="swiper-wrapper">
             <div class="swiper-slide">
-              <div class="gallery-item bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg" data-tilt role="article">
-                <img src="images/wallpaper.webp" alt="Abstract black-and-white wallpaper" class="w-full h-48 object-cover rounded-lg" loading="lazy">
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-4">Wallpapers</h3>
+              <div class="gallery-item bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg hover:shadow-xl transition" data-tilt>
+                <picture>
+                  <source srcset="images/wallpaper.webp" type="image/webp">
+                  <img src="images/wallpaper.jpg" alt="Abstract black-and-white wallpaper" class="w-full h-40 object-cover rounded-lg" loading="lazy">
+                </picture>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4">Abstract Wallpaper</h3>
                 <p class="text-gray-600 dark:text-gray-400">$2.99</p>
-                <button onclick="addToCart('Wallpapers', 299, 'https://gumroad.com/l/artvibestudio-wallpapers')" class="cta-button bg-blue-500 text-white px-4 py-2 rounded-full mt-4 hover:bg-green-400">Add to Cart</button>
+                <div class="flex gap-2 mt-4">
+                  <button class="add-to-cart bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition" data-id="wallpaper1" data-title="Abstract Wallpaper" data-price="2.99">Add to Cart</button>
+                  <button class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition">❤️</button>
+                </div>
               </div>
             </div>
             <div class="swiper-slide">
-              <div class="gallery-item bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg" data-tilt role="article">
-                <img src="images/stickers.webp" alt="Kawaii-style digital stickers" class="w-full h-48 object-cover rounded-lg" loading="lazy">
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-4">Digital Stickers</h3>
+              <div class="gallery-item bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg hover:shadow-xl transition" data-tilt>
+                <picture>
+                  <source srcset="images/stickers.webp" type="image/webp">
+                  <img src="images/stickers.jpg" alt="Kawaii-style digital stickers" class="w-full h-40 object-cover rounded-lg" loading="lazy">
+                </picture>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4">Digital Stickers</h3>
                 <p class="text-gray-600 dark:text-gray-400">$2.99</p>
-                <button onclick="addToCart('Stickers', 299, 'https://gumroad.com/l/artvibestudio-stickers')" class="cta-button bg-blue-500 text-white px-4 py-2 rounded-full mt-4 hover:bg-green-400">Add to Cart</button>
+                <div class="flex gap-2 mt-4">
+                  <button class="add-to-cart bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition" data-id="sticker1" data-title="Digital Stickers" data-price="2.99">Add to Cart</button>
+                  <button class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition">❤️</button>
+                </div>
               </div>
             </div>
             <div class="swiper-slide">
-              <div class="gallery-item bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg" data-tilt role="article">
-                <img src="images/printable.webp" alt="Floral line art printable" class="w-full h-48 object-cover rounded-lg" loading="lazy">
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-4">Printable Art</h3>
+              <div class="gallery-item bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg hover:shadow-xl transition" data-tilt>
+                <picture>
+                  <source srcset="images/printable.webp" type="image/webp">
+                  <img src="images/printable.jpg" alt="Floral line art printable" class="w-full h-40 object-cover rounded-lg" loading="lazy">
+                </picture>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4">Floral Printable</h3>
                 <p class="text-gray-600 dark:text-gray-400">$2.99</p>
-                <button onclick="addToCart('Printable Art', 299, 'https://gumroad.com/l/artvibestudio-art')" class="cta-button bg-blue-500 text-white px-4 py-2 rounded-full mt-4 hover:bg-green-400">Add to Cart</button>
+                <div class="flex gap-2 mt-4">
+                  <button class="add-to-cart bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition" data-id="printable1" data-title="Floral Printable" data-price="2.99">Add to Cart</button>
+                  <button class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition">❤️</button>
+                </div>
               </div>
             </div>
           </div>
@@ -216,350 +327,247 @@
       </div>
     </section>
 
-    <!-- Shop Section -->
-    <section id="shop" class="section py-24 relative bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-800 dark:to-green-800" aria-labelledby="shop-title" role="tabpanel">
-      <div class="parallax-bg absolute inset-0 bg-cover bg-center bg-fixed z-0" style="background-image: url('images/hero-bg.webp');" aria-hidden="true"></div>
-      <div class="container mx-auto relative z-10">
-        <h2 id="shop-title" class="section-title text-4xl md:text-5xl font-bold text-blue-500 dark:text-green-400 text-center mb-12">Shop Our Art</h2>
-        <div class="shop-controls flex flex-col md:flex-row justify-between items-center mb-8">
-          <div class="shop-filters flex gap-4">
-            <select id="category-filter" aria-label="Filter by category" class="p-2 border border-blue-500 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-200">
-              <option value="all">All Categories</option>
-              <option value="Wallpapers">Wallpapers</option>
-              <option value="Stickers">Stickers</option>
-              <option value="Social Media Graphics">Social Media Graphics</option>
-              <option value="Printable Art">Printable Art</option>
-            </select>
-            <select id="sort-filter" aria-label="Sort products" class="p-2 border border-blue-500 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-200">
-              <option value="default">Default</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-              <option value="popularity">Popularity</option>
-              <option value="newest">Newest</option>
-            </select>
-          </div>
-          <div class="coupon mt-4 md:mt-0">
-            <input type="text" id="coupon-code" placeholder="Enter coupon (e.g., VIBES10)" aria-label="Coupon code" class="p-2 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-            <button onclick="applyCoupon()" class="p-2 bg-green-400 text-white rounded-lg hover:bg-blue-500" aria-label="Apply coupon">Apply</button>
-          </div>
-        </div>
-        <div class="shop-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8" id="shop-grid">
-          <!-- Dynamic items populated by script.js -->
-        </div>
-        <div id="recently-viewed" class="mt-12">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Recently Viewed</h3>
-          <div id="recently-viewed-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"></div>
-        </div>
-        <div id="product-reviews" class="mt-12">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Customer Reviews</h3>
-          <div id="reviews-list" class="space-y-4"></div>
-          <form id="review-form" class="mt-6 hidden" aria-label="Submit product review">
-            <div class="flex items-center mb-4">
-              <label for="review-rating" class="mr-2 text-gray-800 dark:text-gray-200">Rating:</label>
-              <select id="review-rating" name="rating" required class="p-2 border border-blue-500 rounded-lg">
-                <option value="5">5 Stars</option>
-                <option value="4">4 Stars</option>
-                <option value="3">3 Stars</option>
-                <option value="2">2 Stars</option>
-                <option value="1">1 Star</option>
-              </select>
-            </div>
-            <textarea id="review-comment" name="comment" rows="4" placeholder="Your review..." required class="w-full p-2 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200"></textarea>
-            <div class="form-group mb-4">
-              <label for="review-image" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Upload Image (optional)</label>
-              <input type="file" id="review-image" name="image" accept="image/*" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-            </div>
-            <button type="submit" class="cta-button bg-blue-500 text-white px-6 py-2 rounded-full mt-4 hover:bg-green-400">Submit Review</button>
-          </form>
-        </div>
+  Collapse
+
+  Wrap
+
+  Copy
+
+  Copy
+  <!-- Shop Section -->
+  <div class="gallery-item bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg hover:shadow-xl transition">
+      <picture>
+          <source srcset="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=300&q=80" type="image/webp">
+          <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=300&q=80" alt="Minimalist wallpaper" class="w-full h-40 object-cover rounded-lg" loading="lazy">
+      </picture>
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4">Minimalist Wallpaper</h3>
+      <p class="text-gray-600 dark:text-gray-400">$3.99</p>
+      <div class="flex gap-2 mt-4">
+          <button class="add-to-cart bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition" data-id="wallpaper2" data-title="Minimalist Wallpaper" data-price="3.99">Add to Cart</button>
+          <button class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition">❤️</button>
       </div>
-    </section>
+  </div>
+  <div class="gallery-item bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg hover:shadow-xl transition">
+      <picture>
+          <source srcset="https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&w=300&q=80" type="image/webp">
+          <img src="https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&w=300&q=80" alt="Printable Art" class="w-full h-40 object-cover rounded-lg" loading="lazy">
+      </picture>
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4">Printable Art</h3>
+      <p class="text-gray-600 dark:text-gray-400">$3.99</p>
+      <div class="flex gap-2 mt-4">
+          <button class="add-to-cart bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition" data-id="printable2" data-title="Printable Art" data-price="3.99">Add to Cart</button>
+          <button class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition">❤️</button>
+      </div>
+  </div>
+
+    <!-- Recently Viewed Section -->
+    <section id="recently-viewed" class="section py-16 bg-gray-100 dark:bg-gray-900" aria-labelledby="recently-viewed-title">
+      <div class="container mx-auto">
+          <h2 id="recently-viewed-title" class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-500 font-montserrat text-center mb-8">Recently Viewed</h2>
+          <div class="shop-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6" id="recently-viewed-grid" aria-live="polite"></div>
+      </div>
+  </section>
+
+    <!-- Custom Wallpapers Section -->
+    <div class="gallery-item bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg hover:shadow-xl transition">
+      <picture>
+          <source srcset="https://images.unsplash.com/photo-1616763355548-1b606e6e9d5b?auto=format&fit=crop&w=300&q=80" type="image/webp">
+          <img src="https://images.unsplash.com/photo-1616763355548-1b606e6e9d5b?auto=format&fit=crop&w=300&q=80" alt="Custom Wallpaper" class="w-full h-40 object-cover rounded-lg" loading="lazy">
+      </picture>
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4">Custom Wallpaper</h3>
+      <p class="text-gray-600 dark:text-gray-400">$4.99</p>
+      <div class="flex gap-2 mt-4">
+          <button class="add-to-cart bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition" data-id="custom1" data-title="Custom Wallpaper" data-price="4.99">Add to Cart</button>
+          <button class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition">❤️</button>
+      </div>
+  </div>
 
     <!-- Request Custom Art Section -->
-    <section id="request" class="section py-24 bg-gray-50 dark:bg-gray-900" aria-labelledby="request-title" role="tabpanel">
+    <section id="request" class="section py-16 bg-gray-100 dark:bg-gray-900" aria-labelledby="request-title">
       <div class="container mx-auto">
-        <h2 id="request-title" class="section-title text-4xl md:text-5xl font-bold text-blue-500 dark:text-green-400 text-center mb-12">Request Custom Art</h2>
-        <form id="request-form" class="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg" aria-label="Custom art request form">
+        <h2 id="request-title" class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-500 font-montserrat text-center mb-8">Request Custom Art</h2>
+        <form id="request-form" class="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg" aria-label="Custom art request form">
           <input type="hidden" name="recaptcha-token" id="request-recaptcha-token">
           <div class="form-group mb-6">
-            <label for="name" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Name</label>
-            <input type="text" id="name" name="name" placeholder="Your Full Name" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
+            <label for="name" class="block text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Name</label>
+            <input type="text" id="name" name="name" placeholder="Your Full Name" required aria-required="true" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
           </div>
           <div class="form-group mb-6">
-            <label for="email" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Email</label>
-            <input type="email" id="email" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
+            <label for="email" class="block text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Email</label>
+            <input type="email" id="email" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
           </div>
           <div class="form-group mb-6">
-            <label for="design-type" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Design Type</label>
-            <select id="design-type" name="design-type" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-              <option value="">Select Design Type</option>
-              <option value="Wallpaper">Wallpaper</option>
-              <option value="Stickers">Stickers</option>
-              <option value="Social Media Graphics">Social Media Graphics</option>
-              <option value="Printable Art">Printable Art</option>
-            </select>
+            <label for="description" class="block text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Description</label>
+            <textarea id="description" name="description" rows="6" placeholder="Describe your design (e.g., cityscape, size)" required aria-required="true" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"></textarea>
           </div>
-          <div class="form-group mb-6">
-            <label for="description" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Description</label>
-            <textarea id="description" name="description" rows="6" placeholder="Describe your design (e.g., cityscape, size)" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200"></textarea>
-          </div>
-          <div class="form-group mb-6">
-            <label for="dimensions" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Dimensions</label>
-            <input type="text" id="dimensions" name="dimensions" placeholder="e.g., 9:16 or 1920x1080" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-          </div>
-          <div class="form-group mb-6">
-            <label for="xlsx-file" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Upload Design Specs (XLSX, optional)</label>
-            <input type="file" id="xlsx-file" name="xlsx-file" accept=".xlsx" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-          </div>
-          <button type="submit" class="cta-button bg-blue-500 text-white px-8 py-3 rounded-full w-full hover:bg-green-400 transition pulse" aria-label="Submit custom art request">Submit Request</button>
-          <p class="form-note text-center text-gray-600 dark:text-gray-400 mt-4">Response within 48 hours!</p>
+          <button type="submit" class="cta-button bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition text-lg">Submit Request</button>
         </form>
-      </div>
-      <div id="modal" class="modal hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50" role="dialog" aria-labelledby="modal-title">
-        <div class="modal-content bg-white dark:bg-gray-800 p-8 rounded-xl text-center max-w-md w-full">
-          <h3 id="modal-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Submission Received</h3>
-          <p class="text-gray-600 dark:text-gray-300">Thank you! We'll contact you soon.</p>
-          <button onclick="closeModal()" class="modal-close bg-blue-500 text-white px-6 py-2 rounded-full mt-4 hover:bg-green-400 transition" aria-label="Close modal">Close</button>
-        </div>
       </div>
     </section>
 
     <!-- Contact Section -->
-    <section id="contact" class="section py-24" aria-labelledby="contact-title" role="tabpanel">
+    <section id="contact" class="section py-16 bg-gray-100 dark:bg-gray-900" aria-labelledby="contact-title">
       <div class="container mx-auto">
-        <h2 id="contact-title" class="section-title text-4xl md:text-5xl font-bold text-blue-500 dark:text-green-400 text-center mb-12">Contact Us</h2>
-        <form id="contact-form" class="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg" aria-label="Contact form">
+        <h2 id="contact-title" class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-500 font-montserrat text-center mb-8">Contact Us</h2>
+        <form id="contact-form" class="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg" aria-label="Contact form">
           <input type="hidden" name="recaptcha-token" id="contact-recaptcha-token">
           <div class="form-group mb-6">
-            <label for="contact-name" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Name</label>
-            <input type="text" id="contact-name" name="name" placeholder="Your Full Name" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
+            <label for="contact-name" class="block text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Name</label>
+            <input type="text" id="contact-name" name="name" placeholder="Your Full Name" required aria-required="true" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
           </div>
           <div class="form-group mb-6">
-            <label for="contact-email" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Email</label>
-            <input type="email" id="contact-email" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
+            <label for="contact-email" class="block text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Email</label>
+            <input type="email" id="contact-email" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
           </div>
           <div class="form-group mb-6">
-            <label for="message" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Message</label>
-            <textarea id="message" name="message" rows="6" placeholder="Your message or inquiry" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200"></textarea>
+            <label for="contact-message" class="block text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Message</label>
+            <textarea id="contact-message" name="message" rows="6" placeholder="Your message..." required aria-required="true" class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"></textarea>
           </div>
-          <button type="submit" class="cta-button bg-blue-500 text-white px-8 py-3 rounded-full w-full hover:bg-green-400 transition pulse" aria-label="Send contact message">Send Message</button>
+          <button type="submit" class="cta-button bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition text-lg">Send Message</button>
         </form>
-        <div class="newsletter mt-12 text-center">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Join Our Newsletter</h3>
-          <form id="newsletter-form" class="max-w-md mx-auto mt-4" aria-label="Newsletter signup form">
-            <input type="hidden" name="recaptcha-token" id="newsletter-recaptcha-token">
-            <div class="form-group mb-6">
-              <label for="newsletter-email" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Email</label>
-              <input type="email" id="newsletter-email" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-            </div>
-            <button type="submit" class="cta-button bg-green-400 text-white px-8 py-3 rounded-full w-full hover:bg-blue-500 transition" aria-label="Subscribe to newsletter">Subscribe</button>
-          </form>
-        </div>
-        <div class="faq mt-12">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 text-center mb-6">Frequently Asked Questions</h3>
-          <div class="space-y-4 max-w-2xl mx-auto">
-            <details class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <summary class="text-lg font-semibold text-blue-500 dark:text-green-400 cursor-pointer">How long does a custom art request take?</summary>
-              <p class="text-gray-600 dark:text-gray-300 mt-2">Custom art requests are typically processed within 48 hours, with final delivery in 5-7 business days.</p>
-            </details>
-            <details class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <summary class="text-lg font-semibold text-blue-500 dark:text-green-400 cursor-pointer">Can I return a digital product?</summary>
-              <p class="text-gray-600 dark:text-gray-300 mt-2">Digital products are non-refundable, but we offer revisions for custom art.</p>
-            </details>
-            <details class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <summary class="text-lg font-semibold text-blue-500 dark:text-green-400 cursor-pointer">How do I track my order?</summary>
-              <p class="text-gray-600 dark:text-gray-300 mt-2">Check the 'My Page' section for real-time order status updates.</p>
-            </details>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- My Page Section -->
-    <section id="my-page" class="section py-24 hidden" aria-labelledby="my-page-title" role="tabpanel">
-      <div class="container mx-auto">
-        <h2 id="my-page-title" class="section-title text-4xl md:text-5xl font-bold text-blue-500 dark:text-green-400 text-center mb-12">My Page</h2>
-        <div id="profile" class="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Your Profile</h3>
-          <form id="profile-form" aria-label="Update profile form">
-            <div class="form-group mb-6">
-              <label for="profile-name" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Name</label>
-              <input type="text" id="profile-name" name="name" placeholder="Your Full Name" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-            </div>
-            <div class="form-group mb-6">
-              <label for="profile-email" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Email</label>
-              <input type="email" id="profile-email" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-            </div>
-            <div class="form-group mb-6">
-              <label for="profile-preferences" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Preferences</label>
-              <textarea id="profile-preferences" name="preferences" rows="4" placeholder="e.g., preferred art styles" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200"></textarea>
-            </div>
-            <button type="submit" class="cta-button bg-blue-500 text-white px-8 py-3 rounded-full w-full hover:bg-green-400 transition" aria-label="Update profile">Update Profile</button>
-          </form>
-          <button onclick="resetPassword()" class="cta-button bg-gray-500 text-white px-8 py-3 rounded-full w-full mt-4 hover:bg-gray-600 transition" aria-label="Reset password">Reset Password</button>
-          <button onclick="enableMFA()" class="cta-button bg-gray-500 text-white px-8 py-3 rounded-full w-full mt-4 hover:bg-gray-600 transition" aria-label="Enable multi-factor authentication">Enable MFA</button>
-        </div>
-        <div id="notifications" class="mt-12 max-w-2xl mx-auto">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Notifications</h3>
-          <ul id="notification-list" class="space-y-4" role="list"></ul>
-        </div>
-        <div id="order-history" class="mt-12 max-w-2xl mx-auto">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Your Orders</h3>
-          <div id="order-list" class="space-y-4" role="list"></div>
-        </div>
-        <div id="wishlist" class="mt-12 max-w-2xl mx-auto">
-          <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Your Wishlist</h3>
-          <div id="wishlist-items" class="grid grid-cols-1 sm:grid-cols-2 gap-4" role="list"></div>
-        </div>
-        <button onclick="signOutUser()" class="cta-button bg-red-500 text-white px-8 py-3 rounded-full w-full max-w-2xl mx-auto mt-8 hover:bg-red-600 transition" aria-label="Sign out">Sign Out</button>
       </div>
     </section>
 
     <!-- About Section -->
-    <section id="about" class="section py-24 relative bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-800 dark:to-green-800" aria-labelledby="about-title" role="tabpanel">
-      <div class="parallax-bg absolute inset-0 bg-cover bg-center bg-fixed z-0" style="background-image: url('images/hero-bg.webp');" aria-hidden="true"></div>
-      <div class="container mx-auto relative z-10 text-center">
-        <h2 id="about-title" class="section-title text-4xl md:text-5xl font-bold text-blue-500 dark:text-green-400 mb-12">About ArtVibeStudio</h2>
-        <img src="images/avatar.webp" alt="Yujin Ahn, artist at ArtVibeStudio" class="avatar mx-auto w-64 h-64 rounded-full shadow-2xl mb-6" loading="lazy">
-        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">Hello, I’m Yujin Ahn, a 13-year-old artist from Canada. At ArtVibeStudio, I create vibrant digital art using AI tools, specializing in bold black-and-white designs with blue and green accents. My mission is to craft affordable, personalized art for teens and young adults. Let’s create something extraordinary together!</p>
-        <div class="timeline max-w-3xl mx-auto mt-12">
-          <div class="timeline-item bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-6 transition transform hover:scale-105">
-            <h4 class="text-xl font-semibold text-blue-500 dark:text-green-400">2023</h4>
-            <p class="text-gray-600 dark:text-gray-300">Started creating digital art with AI tools.</p>
-          </div>
-          <div class="timeline-item bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-6 transition transform hover:scale-105">
-            <h4 class="text-xl font-semibold text-blue-500 dark:text-green-400">2024</h4>
-            <p class="text-gray-600 dark:text-gray-300">Launched ArtVibeStudio to share my creations.</p>
-          </div>
-          <div class="timeline-item bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg transition transform hover:scale-105">
-            <h4 class="text-xl font-semibold text-blue-500 dark:text-green-400">2025</h4>
-            <p class="text-gray-600 dark:text-gray-300">Expanded to offer custom art and global shipping.</p>
-          </div>
-        </div>
-        <a href="#shop" class="cta-button bg-blue-500 text-white px-8 py-3 rounded-full mt-8 inline-block hover:bg-green-400 transition pulse" aria-label="Explore art collection">Explore Art</a>
+    <section id="about" class="section py-16 bg-gray-100 dark:bg-gray-900" aria-labelledby="about-title">
+      <div class="container mx-auto text-center">
+        <h2 id="about-title" class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-500 font-montserrat mb-8">About ArtVibeStudio</h2>
+        <picture>
+          <source srcset="images/avatar.webp" type="image/webp">
+          <img src="images/avatar.jpg" alt="Yujin Ahn Avatar" class="w-24 h-24 rounded-full mx-auto mb-6 shadow-lg" loading="lazy">
+        </picture>
+        <p class="text-lg text-gray-600 dark:text-gray-200 max-w-2xl mx-auto">Hi, I’m Yujin Ahn, a 13-year-old artist from Canada creating vibrant digital art at ArtVibeStudio using AI tools, specializing in bold black-and-white designs with blue and green accents.</p>
+        <a href="#shop" class="cta-button bg-blue-600 dark:bg-blue-500 text-white px-8 py-3 rounded-full mt-8 hover:bg-green-500 dark:hover:bg-green-400 transition text-lg">Explore Art</a>
       </div>
     </section>
   </main>
 
   <!-- Footer -->
-  <footer class="bg-blue-500 dark:bg-green-400 py-12 text-center text-white dark:text-gray-900" role="contentinfo">
-    <div class="container mx-auto">
-      <p class="text-lg">© 2025 ArtVibeStudio. All rights reserved.</p>
-      <div class="quick-links flex justify-center gap-6 mt-4" role="list">
-        <a href="#home" class="hover:underline" aria-label="Home">Home</a>
-        <a href="#shop" class="hover:underline" aria-label="Shop">Shop</a>
-        <a href="#request" class="hover:underline" aria-label="Custom Art">Custom Art</a>
-        <a href="#contact" class="hover:underline" aria-label="Contact">Contact</a>
+  <footer id="footer" class="bg-white dark:bg-gray-800 py-8" role="contentinfo">
+    <div class="container mx-auto text-center text-gray-600 dark:text-gray-400">
+      <p class="text-base">© 2025 ArtVibeStudio. All rights reserved.</p>
+      <div class="social-links flex justify-center gap-6 mt-4">
+        <a href="mailto:contact@artvibestudio.store" class="hover:text-blue-600 dark:hover:text-blue-500 transition flex items-center gap-2 text-base" aria-label="Email ArtVibeStudio"><span class="text-xl">✉️</span> Email</a>
+        <a href="https://instagram.com/artvibestudio" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 dark:hover:text-blue-500 transition flex items-center gap-2 text-base" aria-label="Instagram ArtVibeStudio"><span class="text-xl">📸</span> Instagram</a>
+        <a href="https://tiktok.com/@artvibestudio" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 dark:hover:text-blue-500 transition flex items-center gap-2 text-base" aria-label="TikTok ArtVibeStudio"><span class="text-xl">🎥</span> TikTok</a>
       </div>
-      <div class="social-links flex justify-center gap-6 mt-4" role="list">
-        <a href="https://instagram.com/artvibestudio" target="_blank" rel="noopener" class="flex items-center gap-2 hover:underline" aria-label="Follow on Instagram"><span class="text-xl">📸</span> Instagram</a>
-        <a href="https://tiktok.com/@artvibestudio" target="_blank" rel="noopener" class="flex items-center gap-2 hover:underline" aria-label="Follow on TikTok"><span class="text-xl">🎥</span> TikTok</a>
-        <a href="mailto:hello@artvibestudio.com" class="flex items-center gap-2 hover:underline" aria-label="Email ArtVibeStudio"><span class="text-xl">✉️</span> Email</a>
+      <div class="mt-4 text-base">
+        <a href="/privacy" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition">Privacy</a> | 
+        <a href="/terms" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition">Terms</a>
       </div>
     </div>
   </footer>
 
-  <!-- Sticky CTA -->
-  <a href="#request" class="sticky-cta fixed bottom-8 right-8 bg-green-400 text-white w-16 h-16 rounded-full flex items-center justify-center text-center text-sm font-semibold shadow-lg hover:bg-blue-500 transition transform hover:scale-110 z-40" aria-label="Request custom art">Custom Art</a>
-
   <!-- Cart Modal -->
-  <div id="cart-modal" class="modal hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50" role="dialog" aria-labelledby="cart-title">
-    <div class="modal-content bg-white dark:bg-gray-800 p-8 rounded-xl text-center max-w-md w-full">
-      <h3 id="cart-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Your Cart</h3>
-      <div id="cart-items" class="mt-4 space-y-4" role="list"></div>
-      <p class="text-lg text-gray-600 dark:text-gray-300 mt-4">Subtotal: $<span id="cart-subtotal">0.00</span></p>
-      <p class="text-lg text-gray-600 dark:text-gray-300">Discount: $<span id="cart-discount">0.00</span></p>
-      <p class="text-lg text-gray-600 dark:text-gray-300">Total: $<span id="cart-total">0.00</span></p>
-      <button onclick="checkout()" class="cta-button bg-blue-500 text-white px-6 py-2 rounded-full mt-4 hover:bg-green-400 transition" aria-label="Proceed to checkout">Checkout</button>
-      <button onclick="closeCart()" class="modal-close bg-gray-500 text-white px-6 py-2 rounded-full mt-4 hover:bg-gray-600 transition" aria-label="Close cart">Close</button>
+  <div id="cart-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="cart-title">
+    <div class="modal-content bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-lg w-full">
+      <h3 id="cart-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Your Cart</h3>
+      <div id="cart-items" class="space-y-4"></div>
+      <div class="mt-6 flex justify-between items-center">
+        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">Total: $<span id="cart-total">0.00</span></p>
+        <button class="cta-button bg-blue-600 dark:bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition">Checkout</button>
+      </div>
+      <button type="button" class="modal-close mt-4 bg-gray-500 text-white px-6 py-2 rounded-full hover:bg-gray-600 transition">Close</button>
     </div>
   </div>
 
-  <!-- Login/Sign Up Modal -->
-  <div id="login-modal" class="modal hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50" role="dialog" aria-labelledby="login-title">
-    <div class="modal-content bg-white dark:bg-gray-800 p-8 rounded-xl text-center max-w-md w-full">
-      <h3 id="login-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Login or Sign Up</h3>
-      <button onclick="loginWithGoogle()" class="social-login bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 w-full p-3 rounded-lg mt-4 hover:bg-blue-500 hover:text-white transition" aria-label="Login with Google">Login with Google</button>
-      <button onclick="loginWithFacebook()" class="social-login bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 w-full p-3 rounded-lg mt-2 hover:bg-blue-500 hover:text-white transition" aria-label="Login with Facebook">Login with Facebook</button>
-      <button onclick="loginWithApple()" class="social-login bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 w-full p-3 rounded-lg mt-2 hover:bg-blue-500 hover:text-white transition" aria-label="Login with Apple">Login with Apple</button>
-      <h4 class="text-lg text-gray-800 dark:text-gray-200 mt-4">Or use email</h4>
-      <form id="email-form" class="mt-4" aria-label="Email login form">
+  <!-- Login Modal -->
+  <div id="login-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="login-title">
+    <div class="modal-content bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-md w-full">
+      <h3 id="login-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Login or Sign Up</h3>
+      <form id="email-form">
         <div class="form-group mb-4">
-          <label for="email-auth" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Email</label>
-          <input type="email" id="email-auth" name="email" placeholder="your.email@example.com" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
+          <label for="email-auth" class="block text-gray-800 dark:text-gray-200 text-base">Email</label>
+          <input type="email" id="email-auth" name="email" placeholder="your.email@example.com" required class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
         </div>
         <div class="form-group mb-4">
-          <label for="password" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Password</label>
-          <input type="password" id="password" name="password" placeholder="Choose a password" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
+          <label for="password" class="block text-gray-800 dark:text-gray-200 text-base">Password</label>
+          <input type="password" id="password" name="password" placeholder="Choose a password" required class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
         </div>
-        <button type="submit" class="cta-button bg-blue-500 text-white px-6 py-2 rounded-full w-full hover:bg-green-400 transition" aria-label="Sign up or login with email">Sign Up/Login</button>
+        <button type="submit" class="cta-button w-full bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition text-base">Sign Up/Login</button>
       </form>
-      <button onclick="closeLogin()" class="modal-close bg-gray-500 text-white px-6 py-2 rounded-full mt-4 hover:bg-gray-600 transition" aria-label="Close login modal">Close</button>
+      <button type="button" class="modal-close mt-4 bg-gray-500 text-white px-6 py-2 rounded-full hover:bg-gray-600 transition">Close</button>
     </div>
   </div>
 
   <!-- MFA Modal -->
-  <div id="mfa-modal" class="modal hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50" role="dialog" aria-labelledby="mfa-title">
-    <div class="modal-content bg-white dark:bg-gray-800 p-8 rounded-xl text-center max-w-md w-full">
-      <h3 id="mfa-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200">Multi-Factor Authentication</h3>
-      <p class="text-gray-600 dark:text-gray-300">Enter the OTP sent to your email.</p>
-      <form id="mfa-form" class="mt-4" aria-label="MFA verification form">
-        <div class="form-group mb-4">
-          <label for="mfa-code" class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">OTP Code</label>
-          <input type="text" id="mfa-code" name="code" placeholder="Enter OTP" required aria-required="true" class="w-full p-3 border border-blue-500 rounded-lg dark:bg-gray-700 dark:text-gray-200">
-        </div>
-        <button type="submit" class="cta-button bg-blue-500 text-white px-6 py-2 rounded-full w-full hover:bg-green-400 transition" aria-label="Verify OTP">Verify</button>
-      </form>
-      <button onclick="closeMFA()" class="modal-close bg-gray-500 text-white px-6 py-2 rounded-full mt-4 hover:bg-gray-600 transition" aria-label="Close MFA modal">Close</button>
+  <div id="mfa-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-labelledby="mfa-title">
+    <div class="modal-content bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-md w-full">
+        <h3 id="mfa-title" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Multi-Factor Authentication</h3>
+        <form id="mfa-form">
+            <div class="form-group mb-4">
+                <label for="mfa-code" class="block text-gray-800 dark:text-gray-200 text-base">Enter OTP</label>
+                <input type="text" id="mfa-code" name="mfa-code" placeholder="Enter 6-digit OTP" required class="w-full p-3 border border-blue-600 dark:border-blue-500 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400">
+            </div>
+            <button type="submit" class="cta-button w-full bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-green-500 dark:hover:bg-green-400 transition text-base">Verify OTP</button>
+        </form>
+        <button type="button" class="modal-close mt-4 bg-gray-500 text-white px-6 py-2 rounded-full hover:bg-gray-600 transition">Close</button>
     </div>
   </div>
 
-  <!-- Chatbase Widget -->
+  <!-- Inline Script for Basic Interactivity -->
   <script>
-    window.chatbaseConfig = {
-      chatbotId: "your-chatbase-chatbot-id",
-      domain: "www.chatbase.co",
-      theme: {
-        primaryColor: "#1E90FF",
-        secondaryColor: "#00FA9A"
-      }
-    };
-  </script>
-  <script src="https://www.chatbase.co/embed.min.js" defer></script>
+    // Basic interactivity for local testing
+    document.addEventListener('DOMContentLoaded', () => {
+      // Mobile Menu Toggle
+      const menuToggle = document.querySelector('.menu-toggle');
+      const navLinks = document.querySelector('.nav-links');
+      menuToggle.addEventListener('click', () => {
+        navLinks.classList.toggle('hidden');
+        const expanded = navLinks.classList.contains('hidden') ? 'false' : 'true';
+        menuToggle.setAttribute('aria-expanded', expanded);
+      });
 
-  <!-- XLSX Processing -->
-  <script>
-    var gk_isXlsx = false;
-    var gk_xlsxFileLookup = {};
-    var gk_fileData = {};
-    function filledCell(cell) {
-      return cell !== '' && cell != null;
-    }
-    function loadFileData(filename) {
-      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-        try {
-          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-          var firstSheetName = workbook.SheetNames[0];
-          var worksheet = workbook.Sheets[firstSheetName];
-          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-          var filteredData = jsonData.filter(row => row.some(filledCell));
-          var headerRowIndex = filteredData.findIndex((row, index) =>
-            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-          );
-          if (headerRowIndex === -1 || headerRowIndex > 25) {
-            headerRowIndex = 0;
+      // Cart Functionality
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const updateCartCount = () => {
+        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+        document.getElementById('cart-count').textContent = count;
+      };
+      document.querySelectorAll('.add-to-cart').forEach(button => {
+        button.addEventListener('click', () => {
+          const { id, title, price } = button.dataset;
+          const item = cart.find(i => i.id === id);
+          if (item) {
+            item.quantity += 1;
+          } else {
+            cart.push({ id, title, price: parseFloat(price), quantity: 1 });
           }
-          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
-          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-          return csv;
-        } catch (e) {
-          console.error('Error processing XLSX file:', e);
-          return "";
-        }
+          localStorage.setItem('cart', JSON.stringify(cart));
+          updateCartCount();
+          alert(`${title} added to cart!`);
+        });
+      });
+      updateCartCount();
+
+      // Cart Modal
+      const cartLink = document.getElementById('cart-link');
+      const cartModal = document.getElementById('cart-modal');
+      const closeCart = cartModal.querySelector('.modal-close');
+      cartLink.addEventListener('click', () => cartModal.classList.remove('hidden'));
+      closeCart.addEventListener('click', () => cartModal.classList.add('hidden'));
+
+      // Login Modal
+      const authButton = document.getElementById('auth-button');
+      const loginModal = document.getElementById('login-modal');
+      const closeLogin = loginModal.querySelector('.modal-close');
+      authButton.addEventListener('click', () => loginModal.classList.remove('hidden'));
+      closeLogin.addEventListener('click', () => loginModal.classList.add('hidden'));
+
+      // Swiper Initialization
+      if (window.Swiper) {
+        new Swiper('.swiper-container', {
+          slidesPerView: 1,
+          spaceBetween: 10,
+          pagination: { el: '.swiper-pagination', clickable: true },
+          navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+          breakpoints: {
+            640: { slidesPerView: 2 },
+            768: { slidesPerView: 3 }
+          }
+        });
       }
-      return gk_fileData[filename] || "";
-    }
+    });
   </script>
-  <script src="script.js" defer></script>
 </body>
 </html>
